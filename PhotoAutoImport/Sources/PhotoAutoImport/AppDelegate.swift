@@ -60,6 +60,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         eraseItem.state = Prefs.eraseAfterImport ? .on : .off
         menu.addItem(eraseItem)
 
+        let qualityItem = NSMenuItem(
+            title: "匯入後分析畫質（挑出模糊）",
+            action: #selector(toggleQuality), keyEquivalent: ""
+        )
+        qualityItem.target = self
+        qualityItem.state = Prefs.analyzeQuality ? .on : .off
+        menu.addItem(qualityItem)
+
         let davinciItem = NSMenuItem(
             title: "匯入後詢問送進達芬奇",
             action: #selector(toggleDavinci), keyEquivalent: ""
@@ -121,6 +129,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         rebuildMenu()
     }
 
+    @objc private func toggleQuality() {
+        Prefs.analyzeQuality.toggle()
+        rebuildMenu()
+    }
+
     @objc private func toggleDavinci() {
         Prefs.sendToDavinci.toggle()
         rebuildMenu()
@@ -172,13 +185,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             let result = self.importer.importVolume(volume, destinationRoot: destination)
 
+            // 畫質分析：把模糊/曝光差的挑到 _LowQuality，留下的才會送進達芬奇。
+            var sortResult: QualitySortResult?
+            if Prefs.analyzeQuality && !result.newlyCopied.isEmpty {
+                sortResult = QualitySorter.sort(result.newlyCopied,
+                                                destinationRoot: destination)
+            }
+
             DispatchQueue.main.async {
-                self.handleResult(result, volume: volume, manual: manual)
+                self.handleResult(result, sortResult: sortResult,
+                                  volume: volume, manual: manual)
             }
         }
     }
 
-    private func handleResult(_ result: ImportResult, volume: URL, manual: Bool) {
+    private func handleResult(_ result: ImportResult, sortResult: QualitySortResult?,
+                              volume: URL, manual: Bool) {
         let volumeName = volume.lastPathComponent
 
         if result.copied == 0 && result.skipped == 0 && result.failed == 0 {
@@ -192,6 +214,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if result.copied > 0 { parts.append("新匯入 \(result.copied)") }
         if result.skipped > 0 { parts.append("略過重複 \(result.skipped)") }
         if result.failed > 0 { parts.append("失敗 \(result.failed)") }
+        if let s = sortResult, s.moved > 0 { parts.append("低畫質挑出 \(s.moved)") }
         Notifier.notify(title: "匯入完成：\(volumeName)", body: parts.joined(separator: "、"))
 
         // 先問達芬奇，再問清空卡（兩者都是選用、且都會先確認）。

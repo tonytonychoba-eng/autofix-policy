@@ -8,6 +8,8 @@ struct ImportResult {
     var importedSources: [URL] = []
     /// 這次有新檔複製進去的日期資料夾（供「送進達芬奇」使用）。
     var touchedDayFolders: [URL] = []
+    /// 這次新複製到目的地的檔案路徑（供「畫質分析」使用）。
+    var newlyCopied: [URL] = []
 }
 
 /// 負責掃描卷宗、複製照片影片、去重、依拍攝日期分資料夾。
@@ -81,6 +83,7 @@ final class Importer {
                     ledger.insert(key)
                     result.copied += 1
                     result.importedSources.append(source)
+                    result.newlyCopied.append(dest)
                     touched.insert(dayFolder)
                 } else {
                     try? fm.removeItem(at: dest)

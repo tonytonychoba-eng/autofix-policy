@@ -16,6 +16,12 @@ enum Prefs {
         set { d.set(newValue, forKey: "eraseAfterImport") }
     }
 
+    /// 匯入後是否做本機畫質分析、把模糊/曝光差的挑到 _LowQuality。預設關閉。
+    static var analyzeQuality: Bool {
+        get { d.bool(forKey: "analyzeQuality") }
+        set { d.set(newValue, forKey: "analyzeQuality") }
+    }
+
     /// 匯入後是否詢問「送進 DaVinci Resolve」。預設關閉。
     static var sendToDavinci: Bool {
         get { d.bool(forKey: "sendToDavinci") }

@@ -6,6 +6,8 @@ struct ImportResult {
     var failed = 0
     /// 已成功匯入的來源檔（供「清空卡」使用）。
     var importedSources: [URL] = []
+    /// 這次有新檔複製進去的日期資料夾（供「送進達芬奇」使用）。
+    var touchedDayFolders: [URL] = []
 }
 
 /// 負責掃描卷宗、複製照片影片、去重、依拍攝日期分資料夾。
@@ -37,6 +39,7 @@ final class Importer {
     /// 掃描單一卷宗並匯入。會在背景執行緒呼叫；不碰 UI。
     func importVolume(_ volume: URL, destinationRoot: URL) -> ImportResult {
         var result = ImportResult()
+        var touched = Set<URL>()
 
         let mediaFiles = scanMedia(in: volume)
         guard !mediaFiles.isEmpty else { return result }
@@ -78,6 +81,7 @@ final class Importer {
                     ledger.insert(key)
                     result.copied += 1
                     result.importedSources.append(source)
+                    touched.insert(dayFolder)
                 } else {
                     try? fm.removeItem(at: dest)
                     result.failed += 1
@@ -88,6 +92,7 @@ final class Importer {
         }
 
         ledger.save()
+        result.touchedDayFolders = Array(touched)
         return result
     }
 

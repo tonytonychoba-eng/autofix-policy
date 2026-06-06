@@ -11,6 +11,8 @@
 - 🔔 **完成時發系統通知**：告訴你新匯入幾個、略過幾個。
 - 🗑 **匯入後可選清空卡**：成功匯入後跳出確認視窗，你按下才會刪卡上的照片影片
   （預設關閉，要在選單裡打開）。
+- 🎬 **匯入後可選送進達芬奇**：成功匯入後詢問你要不要把素材丟進 DaVinci Resolve，
+  自動在媒體池 `AutoImport` bin 下依日期建立子 bin 並匯入（需 **Resolve Studio**，預設關閉）。
 
 支援常見格式：JPG/HEIC/PNG/TIFF/RAW（CR2/CR3/NEF/ARW/RAF/ORF/DNG…）、
 MOV/MP4/M4V/AVI/MTS/M2TS… 等。
@@ -46,6 +48,22 @@ macOS 的隱私保護會在第一次需要時跳出詢問，請按允許：
 如果讀取卡片或刪檔被擋，到「系統設定 → 隱私權與安全性 → **完整磁碟取用權**」
 把 `PhotoAutoImport.app` 加進去最省事。
 
+## 達芬奇整合（選用，需 Resolve Studio）
+
+> ⚠️ DaVinci Resolve 的**外部腳本**只有付費的 **Studio** 版支援；免費版會被擋。
+
+1. 在選單裡打開「**匯入後詢問送進達芬奇**」。
+2. Resolve 偏好設定 → System → General → **External scripting using** 設為 **Local**。
+3. 匯入照片影片前，先開好 Resolve Studio 並打開一個專案。
+4. 之後每次插卡匯入完，App 會問你要不要送進達芬奇；按「送進達芬奇」後，
+   它會在媒體池 `AutoImport` bin 底下，依日期建立子 bin（如 `2026-06-06`）並匯入素材。
+
+腳本位於 `davinci/davinci_import.py`，也可以單獨手動執行：
+
+```bash
+python3 davinci/davinci_import.py ~/Pictures/AutoImport/2026-06-06
+```
+
 ## 開機自動啟動（選用）
 
 系統設定 → 一般 → 登入項目 → 「登入時開啟」按 `+`，選 `PhotoAutoImport.app`。
@@ -62,12 +80,14 @@ macOS 的隱私保護會在第一次需要時跳出詢問，請按允許：
 PhotoAutoImport/
 ├── Package.swift
 ├── scripts/build_app.sh          # 編譯 + 打包成 .app
+├── davinci/davinci_import.py     # 達芬奇媒體池匯入腳本（Resolve Studio）
 └── Sources/PhotoAutoImport/
     ├── main.swift                # 進入點，設定為選單列 App
     ├── AppDelegate.swift         # 選單列 UI 與匯入流程串接
     ├── VolumeMonitor.swift       # 監聽插卡 / 列出已連接的卡
     ├── Importer.swift            # 掃描、複製、去重、分資料夾、清空卡
     ├── ImportLedger.swift        # 已匯入紀錄（避免重複）
+    ├── DavinciBridge.swift       # 呼叫達芬奇匯入腳本
     ├── Notifier.swift            # 系統通知
     └── Prefs.swift               # 偏好設定
 ```

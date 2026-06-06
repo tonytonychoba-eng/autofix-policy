@@ -16,6 +16,12 @@ enum Prefs {
         set { d.set(newValue, forKey: "eraseAfterImport") }
     }
 
+    /// 匯入後是否詢問「送進 DaVinci Resolve」。預設關閉。
+    static var sendToDavinci: Bool {
+        get { d.bool(forKey: "sendToDavinci") }
+        set { d.set(newValue, forKey: "sendToDavinci") }
+    }
+
     /// 匯入目的地根資料夾。預設 ~/Pictures/AutoImport。
     static var destination: URL {
         get {

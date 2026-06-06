@@ -60,6 +60,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         eraseItem.state = Prefs.eraseAfterImport ? .on : .off
         menu.addItem(eraseItem)
 
+        let davinciItem = NSMenuItem(
+            title: "匯入後詢問送進達芬奇",
+            action: #selector(toggleDavinci), keyEquivalent: ""
+        )
+        davinciItem.target = self
+        davinciItem.state = Prefs.sendToDavinci ? .on : .off
+        menu.addItem(davinciItem)
+
         menu.addItem(.separator())
 
         let destItem = NSMenuItem(
@@ -110,6 +118,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func toggleErase() {
         Prefs.eraseAfterImport.toggle()
+        rebuildMenu()
+    }
+
+    @objc private func toggleDavinci() {
+        Prefs.sendToDavinci.toggle()
         rebuildMenu()
     }
 
@@ -181,6 +194,35 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         if result.failed > 0 { parts.append("失敗 \(result.failed)") }
         Notifier.notify(title: "匯入完成：\(volumeName)", body: parts.joined(separator: "、"))
 
+        // 先問達芬奇，再問清空卡（兩者都是選用、且都會先確認）。
+        promptDavinciThenErase(result: result, volumeName: volumeName)
+    }
+
+    private func promptDavinciThenErase(result: ImportResult, volumeName: String) {
+        let folders = result.touchedDayFolders
+        if Prefs.sendToDavinci && !folders.isEmpty {
+            let alert = NSAlert()
+            alert.messageText = "要把這次的素材送進達芬奇嗎？"
+            alert.informativeText = "會在媒體池的 AutoImport bin 底下，依日期建立 \(folders.count) 個 bin 並匯入素材。" +
+                "需要 DaVinci Resolve Studio 正在執行、且已開啟專案。"
+            alert.addButton(withTitle: "送進達芬奇")
+            alert.addButton(withTitle: "略過")
+            NSApp.activate(ignoringOtherApps: true)
+
+            if alert.runModal() == .alertFirstButtonReturn {
+                workQueue.async { [weak self] in
+                    DavinciBridge.sendFolders(folders)
+                    DispatchQueue.main.async {
+                        self?.maybePromptErase(result: result, volumeName: volumeName)
+                    }
+                }
+                return
+            }
+        }
+        maybePromptErase(result: result, volumeName: volumeName)
+    }
+
+    private func maybePromptErase(result: ImportResult, volumeName: String) {
         // 只有真的有新檔複製成功，且使用者開了「清空卡」才詢問。
         if Prefs.eraseAfterImport && result.copied > 0 && result.failed == 0 {
             promptErase(sources: result.importedSources, volumeName: volumeName)
